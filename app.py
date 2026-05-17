@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timezone
 
-import requests
+from google import genai
 from flask import Flask, jsonify, render_template, request
 
 # Flask 앱 생성
@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 # Gemini API 설정 (Vercel 환경변수 사용)
 API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+GEMINI_MODEL = "gemini-2.5-flash"
 
 # 최신 센서 데이터를 메모리에 보관
 _latest: dict = {}
@@ -34,8 +34,15 @@ def _build_fallback_result(temp: float, hum: float, reason: str) -> str:
     )
 
 
-def _extract_gemini_text(result_json: dict) -> str:
-    return result_json["candidates"][0]["content"]["parts"][0]["text"]
+def _call_gemini(prompt: str) -> str:
+    client = genai.Client(api_key=API_KEY)
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt,
+    )
+    if not response.text:
+        raise ValueError("Gemini response text is empty")
+    return response.text
 
 
 @app.route("/", methods=["GET"])
@@ -90,28 +97,9 @@ def sensor():
 
         if API_KEY:
             try:
-                headers = {
-                    "Content-Type": "application/json",
-                    "x-goog-api-key": API_KEY,
-                }
-                body = {
-                    "contents": [
-                        {
-                            "parts": [
-                                {"text": prompt},
-                            ]
-                        }
-                    ]
-                }
-
-                res = requests.post(GEMINI_URL, headers=headers, json=body, timeout=12)
-                res.raise_for_status()
-                result_json = res.json()
-                result = _extract_gemini_text(result_json)
-            except requests.RequestException as e:
+                result = _call_gemini(prompt)
+            except Exception as e:
                 ai_error = f"Gemini request failed: {e}"
-            except (KeyError, IndexError, TypeError) as e:
-                ai_error = f"Invalid Gemini response: {e}"
         else:
             ai_error = "GEMINI_API_KEY is not set"
 
