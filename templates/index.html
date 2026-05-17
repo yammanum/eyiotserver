@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>라벤더 정원 모니터</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;1,400&display=swap');
+
+    :root {
+      --lavender-deep:   #5c3d8f;
+      --lavender-mid:    #9b72cf;
+      --lavender-light:  #c9a7eb;
+      --lavender-pale:   #ede0f7;
+      --lavender-mist:   #f7f0ff;
+      --green-stem:      #7a9e7e;
+      --white:           #ffffff;
+      --shadow:          rgba(92, 61, 143, 0.18);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: linear-gradient(160deg, #e8d5f5 0%, #d4b8f0 30%, #c9a7eb 60%, #b090d8 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── 라벤더 꽃 배경 ── */
+    .flowers-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .stem {
+      position: absolute;
+      bottom: 0;
+      width: 3px;
+      background: var(--green-stem);
+      border-radius: 2px;
+      transform-origin: bottom center;
+      animation: sway 4s ease-in-out infinite;
+    }
+    .stem::before {
+      content: '';
+      position: absolute;
+      top: -28px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 8px;
+      height: 30px;
+      background: radial-gradient(ellipse at center, var(--lavender-mid) 30%, var(--lavender-deep) 100%);
+      border-radius: 50% 50% 40% 40%;
+      box-shadow: 0 0 6px var(--lavender-light);
+    }
+    .stem::after {
+      content: '';
+      position: absolute;
+      top: -42px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 6px;
+      height: 18px;
+      background: radial-gradient(ellipse at center, var(--lavender-light) 30%, var(--lavender-mid) 100%);
+      border-radius: 50% 50% 40% 40%;
+      box-shadow: 0 0 4px var(--lavender-pale);
+    }
+
+    @keyframes sway {
+      0%, 100% { transform: rotate(-3deg); }
+      50%       { transform: rotate(3deg);  }
+    }
+
+    /* ── 레이아웃 ── */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      color: var(--lavender-deep);
+      text-shadow: 0 2px 12px var(--lavender-light);
+      letter-spacing: 0.03em;
+    }
+    header p.subtitle {
+      margin-top: 8px;
+      color: var(--lavender-deep);
+      font-size: 0.9rem;
+      opacity: 0.75;
+    }
+
+    /* ── 카드 ── */
+    .card {
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(155, 114, 207, 0.3);
+      border-radius: 20px;
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 32px var(--shadow);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 14px 40px var(--shadow);
+    }
+
+    .card-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--lavender-mid);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title::before {
+      content: '';
+      display: inline-block;
+      width: 6px; height: 6px;
+      background: var(--lavender-mid);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--lavender-light);
+    }
+
+    /* ── 센서 그리드 ── */
+    .sensor-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 480px) { .sensor-grid { grid-template-columns: 1fr; } }
+
+    .sensor-item {
+      background: linear-gradient(135deg, var(--lavender-pale) 0%, rgba(201,167,235,0.35) 100%);
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+    }
+    .sensor-label {
+      font-size: 0.78rem;
+      color: var(--lavender-deep);
+      opacity: 0.7;
+      margin-bottom: 6px;
+    }
+    .sensor-value {
+      font-size: clamp(2rem, 6vw, 2.8rem);
+      font-weight: 600;
+      color: var(--lavender-deep);
+      line-height: 1;
+    }
+    .sensor-unit {
+      font-size: 1rem;
+      font-weight: 300;
+      color: var(--lavender-mid);
+      margin-left: 4px;
+    }
+
+    /* ── AI 응답 ── */
+    .ai-body {
+      font-size: 0.92rem;
+      line-height: 1.8;
+      color: #3d2a5e;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* ── 상태 배지 ── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.6);
+      border: 1px solid rgba(155,114,207,0.3);
+      color: var(--lavender-deep);
+      font-weight: 600;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #8bc34a;
+      animation: pulse 2s infinite;
+    }
+    .dot.stale { background: #e0a030; animation: none; }
+    .dot.loading { background: var(--lavender-mid); animation: pulse 0.8s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1;   box-shadow: 0 0 0 0 rgba(139,195,74,0.5); }
+      50%       { opacity: 0.6; box-shadow: 0 0 0 6px rgba(139,195,74,0);  }
+    }
+
+    .last-update {
+      font-size: 0.78rem;
+      color: var(--lavender-deep);
+      opacity: 0.65;
+    }
+
+    /* ── 로딩 플레이스홀더 ── */
+    .skeleton {
+      background: linear-gradient(90deg,
+        rgba(201,167,235,0.25) 25%,
+        rgba(201,167,235,0.55) 50%,
+        rgba(201,167,235,0.25) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 8px;
+      height: 1em;
+      margin: 4px 0;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── 모터 상태 태그 ── */
+    .motor-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .motor-tag {
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border: 2px solid transparent;
+    }
+    .motor-tag.on  { background: #e8f5e9; border-color: #66bb6a; color: #2e7d32; }
+    .motor-tag.off { background: var(--lavender-pale); border-color: var(--lavender-light); color: var(--lavender-deep); }
+
+    footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--lavender-deep);
+      opacity: 0.5;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 라벤더 꽃 배경 (JS로 생성) -->
+<div class="flowers-bg" id="flowersBg"></div>
+
+<div class="container">
+  <header>
+    <h1>🌿 라벤더 정원 모니터</h1>
+    <p class="subtitle">ESP32 실시간 환경 센서 &amp; AI 생육 분석</p>
+  </header>
+
+  <!-- 상태 바 -->
+  <div class="status-bar">
+    <div class="badge">
+      <span class="dot loading" id="dotEl"></span>
+      <span id="statusText">연결 중...</span>
+    </div>
+    <span class="last-update" id="lastUpdateEl">마지막 업데이트: —</span>
+  </div>
+
+  <!-- 센서 카드 -->
+  <div class="card">
+    <div class="card-title">ESP32 센서 데이터 (5분 주기)</div>
+    <div class="sensor-grid">
+      <div class="sensor-item">
+        <div class="sensor-label">온도</div>
+        <div class="sensor-value" id="tempEl">—<span class="sensor-unit">°C</span></div>
+      </div>
+      <div class="sensor-item">
+        <div class="sensor-label">습도</div>
+        <div class="sensor-value" id="humEl">—<span class="sensor-unit">%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 모터 상태 카드 -->
+  <div class="card">
+    <div class="card-title">모터 제어 상태</div>
+    <div class="motor-row" id="motorRow">
+      <span class="motor-tag off" id="fanTag">🌀 선풍기: —</span>
+      <span class="motor-tag off" id="pumpTag">💧 물펌프: —</span>
+    </div>
+  </div>
+
+  <!-- AI 분석 카드 -->
+  <div class="card">
+    <div class="card-title">Gemini AI 생육 분석</div>
+    <div class="ai-body" id="aiBody">
+      <div class="skeleton" style="width:80%"></div>
+      <div class="skeleton" style="width:65%"></div>
+      <div class="skeleton" style="width:72%"></div>
+    </div>
+  </div>
+
+  <footer>라벤더 정원 IoT 모니터 &bull; ESP32 + Flask + Gemini AI</footer>
+</div>
+
+<script>
+  // ── 라벤더 꽃 배경 생성 ──
+  (function buildFlowers() {
+    const bg = document.getElementById('flowersBg');
+    const count = Math.max(18, Math.floor(window.innerWidth / 55));
+    for (let i = 0; i < count; i++) {
+      const stem = document.createElement('div');
+      stem.className = 'stem';
+      const h = 80 + Math.random() * 100;
+      const delay = (Math.random() * 4).toFixed(2);
+      const dur   = (3.5 + Math.random() * 2).toFixed(2);
+      stem.style.cssText = `
+        left: ${(i / count * 100) + (Math.random() * 4 - 2)}%;
+        height: ${h}px;
+        animation-delay: ${delay}s;
+        animation-duration: ${dur}s;
+        opacity: ${0.45 + Math.random() * 0.45};
+      `;
+      bg.appendChild(stem);
+    }
+  })();
+
+  // ── 유틸 ──
+  const $ = id => document.getElementById(id);
+  const dotEl       = $('dotEl');
+  const statusText  = $('statusText');
+  const lastUpdate  = $('lastUpdateEl');
+  const tempEl      = $('tempEl');
+  const humEl       = $('humEl');
+  const aiBody      = $('aiBody');
+  const fanTag      = $('fanTag');
+  const pumpTag     = $('pumpTag');
+
+  function setStatus(state) {
+    dotEl.className = 'dot ' + state;
+    statusText.textContent = state === 'loading' ? '데이터 불러오는 중...'
+                           : state === 'stale'   ? '데이터 없음 (대기 중)'
+                                                 : '연결됨';
+  }
+
+  function formatTime(isoStr) {
+    if (!isoStr) return '—';
+    try {
+      return new Date(isoStr).toLocaleString('ko-KR', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+    } catch { return isoStr; }
+  }
+
+  function updateMotorTags(text) {
+    // JSON 블록에서 fan/pump 값 추출 시도
+    const fanMatch  = text.match(/"?fan(?:_motor)?"?\s*:\s*"?(on|off|true|false|1|0)"?/i);
+    const pumpMatch = text.match(/"?(?:water_?)?pump(?:_motor)?"?\s*:\s*"?(on|off|true|false|1|0)"?/i);
+
+    const isOn = v => v && /on|true|1/i.test(v);
+
+    const fanOn  = fanMatch  ? isOn(fanMatch[1])  : null;
+    const pumpOn = pumpMatch ? isOn(pumpMatch[1]) : null;
+
+    if (fanOn !== null) {
+      fanTag.textContent = '🌀 선풍기: ' + (fanOn ? 'ON' : 'OFF');
+      fanTag.className   = 'motor-tag ' + (fanOn ? 'on' : 'off');
+    }
+    if (pumpOn !== null) {
+      pumpTag.textContent = '💧 물펌프: ' + (pumpOn ? 'ON' : 'OFF');
+      pumpTag.className   = 'motor-tag ' + (pumpOn ? 'on' : 'off');
+    }
+  }
+
+  // ── 데이터 fetch ──
+  async function fetchLatest() {
+    setStatus('loading');
+    try {
+      const res  = await fetch('/api/latest', { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+
+      if (!data.timestamp) {
+        setStatus('stale');
+        tempEl.innerHTML = '—<span class="sensor-unit">°C</span>';
+        humEl.innerHTML  = '—<span class="sensor-unit">%</span>';
+        aiBody.textContent = 'ESP32에서 아직 데이터가 수신되지 않았습니다.';
+        lastUpdate.textContent = '마지막 업데이트: —';
+        return;
+      }
+
+      // 센서 값
+      tempEl.innerHTML = `${parseFloat(data.temperature).toFixed(1)}<span class="sensor-unit">°C</span>`;
+      humEl.innerHTML  = `${parseFloat(data.humidity).toFixed(1)}<span class="sensor-unit">%</span>`;
+
+      // AI 응답
+      const resultText = data.result || '(응답 없음)';
+      aiBody.textContent = resultText;
+      updateMotorTags(resultText);
+
+      // 시간
+      lastUpdate.textContent = '마지막 업데이트: ' + formatTime(data.timestamp);
+      setStatus('');
+    } catch (err) {
+      setStatus('stale');
+      console.error('[fetch error]', err);
+    }
+  }
+
+  // 최초 로드 + 30초마다 갱신
+  fetchLatest();
+  setInterval(fetchLatest, 30_000);
+</script>
+</body>
+</html>
