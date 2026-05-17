@@ -25,6 +25,16 @@ def api_latest():
     return jsonify(_latest)
 
 
+@app.route("/favicon.ico", methods=["GET"])
+def favicon_ico():
+    return "", 204
+
+
+@app.route("/favicon.png", methods=["GET"])
+def favicon_png():
+    return "", 204
+
+
 # (구) 헬스체크 엔드포인트 — 하위 호환용
 @app.route("/health", methods=["GET"])
 def health():
