@@ -110,13 +110,13 @@ def _call_gemini_with_image(prompt: str, image_bytes: bytes, mime_type: str) -> 
 
 
 def _build_image_prompt(question: str, temp, hum) -> str:
-    q = (question or "현재 식물 상태를 진단하고 관리 방법을 알려줘").strip()
+    q = (question or "현재 비 올때 책책 관리 방법을 알려줘").strip()
     sensor_hint = ""
     if temp is not None and hum is not None:
         sensor_hint = f" 참고 센서값: temperature={temp}, humidity={hum}."
     return (
-        "당신은 식물 생육 상태를 판단하는 전문가입니다. "
-        "업로드된 식물 사진을 보고 질문에 답하세요. "
+        "당신은 책를 판단하는 전문가입니다. "
+        "업로드된 사진을 보고 질문에 답하세요. "
         f"질문: {q}."
         f"{sensor_hint}"
     )

@@ -1,643 +1,168 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>라벤더 정원 모니터</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;1,400&display=swap');
+<!-- 스타일 섹션에 추가/수정 -->
+<style>
+  /* ... 기존 스타일 유지 ... */
 
-    :root {
-      --lavender-deep:   #5c3d8f;
-      --lavender-mid:    #9b72cf;
-      --lavender-light:  #c9a7eb;
-      --lavender-pale:   #ede0f7;
-      --lavender-mist:   #f7f0ff;
-      --green-stem:      #7a9e7e;
-      --white:           #ffffff;
-      --shadow:          rgba(92, 61, 143, 0.18);
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Noto Sans KR', sans-serif;
-      background: linear-gradient(160deg, #e8d5f5 0%, #d4b8f0 30%, #c9a7eb 60%, #b090d8 100%);
-      min-height: 100vh;
-      overflow-x: hidden;
+  /* ── 게임 요소: 라벤더 캐릭터 ── */
+  .game-container {
       position: relative;
-    }
-
-    /* ── 라벤더 꽃 배경 ── */
-    .flowers-bg {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      overflow: hidden;
-    }
-
-    .stem {
-      position: absolute;
-      bottom: 0;
-      width: 3px;
-      background: var(--green-stem);
-      border-radius: 2px;
-      transform-origin: bottom center;
-      animation: sway 4s ease-in-out infinite;
-    }
-    .stem::before {
-      content: '';
-      position: absolute;
-      top: -28px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 8px;
-      height: 30px;
-      background: radial-gradient(ellipse at center, var(--lavender-mid) 30%, var(--lavender-deep) 100%);
-      border-radius: 50% 50% 40% 40%;
-      box-shadow: 0 0 6px var(--lavender-light);
-    }
-    .stem::after {
-      content: '';
-      position: absolute;
-      top: -42px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 6px;
-      height: 18px;
-      background: radial-gradient(ellipse at center, var(--lavender-light) 30%, var(--lavender-mid) 100%);
-      border-radius: 50% 50% 40% 40%;
-      box-shadow: 0 0 4px var(--lavender-pale);
-    }
-
-    @keyframes sway {
-      0%, 100% { transform: rotate(-3deg); }
-      50%       { transform: rotate(3deg);  }
-    }
-
-    /* ── 레이아웃 ── */
-    .container {
-      position: relative;
-      z-index: 1;
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 40px 20px 80px;
-    }
-
-    header {
       text-align: center;
-      margin-bottom: 40px;
-    }
-    header h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: clamp(1.8rem, 5vw, 2.8rem);
-      color: var(--lavender-deep);
-      text-shadow: 0 2px 12px var(--lavender-light);
-      letter-spacing: 0.03em;
-    }
-    header p.subtitle {
-      margin-top: 8px;
-      color: var(--lavender-deep);
-      font-size: 0.9rem;
-      opacity: 0.75;
-    }
-
-    /* ── 카드 ── */
-    .card {
-      background: rgba(255, 255, 255, 0.72);
-      backdrop-filter: blur(14px);
-      border: 1px solid rgba(155, 114, 207, 0.3);
-      border-radius: 20px;
-      padding: 28px 32px;
-      margin-bottom: 24px;
-      box-shadow: 0 8px 32px var(--shadow);
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 14px 40px var(--shadow);
-    }
-
-    .card-title {
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--lavender-mid);
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .card-title::before {
-      content: '';
-      display: inline-block;
-      width: 6px; height: 6px;
-      background: var(--lavender-mid);
-      border-radius: 50%;
-      box-shadow: 0 0 6px var(--lavender-light);
-    }
-
-    /* ── 센서 그리드 ── */
-    .sensor-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-    @media (max-width: 480px) { .sensor-grid { grid-template-columns: 1fr; } }
-
-    .sensor-item {
-      background: linear-gradient(135deg, var(--lavender-pale) 0%, rgba(201,167,235,0.35) 100%);
-      border-radius: 14px;
+      margin: 20px 0;
       padding: 20px;
-      text-align: center;
-    }
-    .sensor-label {
-      font-size: 0.78rem;
-      color: var(--lavender-deep);
-      opacity: 0.7;
-      margin-bottom: 6px;
-    }
-    .sensor-value {
-      font-size: clamp(2rem, 6vw, 2.8rem);
-      font-weight: 600;
-      color: var(--lavender-deep);
-      line-height: 1;
-    }
-    .sensor-unit {
-      font-size: 1rem;
-      font-weight: 300;
-      color: var(--lavender-mid);
-      margin-left: 4px;
-    }
-
-    /* ── AI 응답 ── */
-    .ai-body {
-      font-size: 0.92rem;
-      line-height: 1.8;
-      color: #3d2a5e;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .plant-image-wrap {
-      margin-top: 14px;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1px solid rgba(155, 114, 207, 0.35);
-      background: rgba(255,255,255,0.7);
-    }
-    .plant-image {
-      display: block;
-      width: 100%;
-      height: auto;
-      max-height: 340px;
-      object-fit: cover;
-    }
-    .plant-image-caption {
-      font-size: 0.76rem;
-      color: var(--lavender-deep);
-      opacity: 0.72;
-      padding: 8px 10px;
-      border-top: 1px solid rgba(155, 114, 207, 0.2);
-    }
-
-    .ask-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      margin-top: 12px;
-    }
-    .ask-row input {
-      border: 1px solid rgba(155, 114, 207, 0.35);
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 0.88rem;
-      width: 100%;
-    }
-    .ask-row button {
-      border: 1px solid rgba(92, 61, 143, 0.5);
-      background: var(--lavender-deep);
-      color: #fff;
-      border-radius: 10px;
-      padding: 10px 14px;
-      cursor: pointer;
-      font-size: 0.84rem;
-      font-weight: 600;
-    }
-    .ask-row button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    /* ── 상태 배지 ── */
-    .status-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 28px;
-    }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.78rem;
-      padding: 5px 12px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.6);
-      border: 1px solid rgba(155,114,207,0.3);
-      color: var(--lavender-deep);
-      font-weight: 600;
-    }
-    .dot {
-      width: 8px; height: 8px;
+      background: rgba(255, 255, 255, 0.4);
       border-radius: 50%;
-      background: #8bc34a;
-      animation: pulse 2s infinite;
-    }
-    .dot.stale { background: #e0a030; animation: none; }
-    .dot.loading { background: var(--lavender-mid); animation: pulse 0.8s infinite; }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1;   box-shadow: 0 0 0 0 rgba(139,195,74,0.5); }
-      50%       { opacity: 0.6; box-shadow: 0 0 0 6px rgba(139,195,74,0);  }
-    }
-
-    .last-update {
-      font-size: 0.78rem;
-      color: var(--lavender-deep);
-      opacity: 0.65;
-    }
-
-    .settings-box {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.76rem;
-      color: var(--lavender-deep);
-      background: rgba(255,255,255,0.65);
-      border: 1px solid rgba(155,114,207,0.3);
-      border-radius: 999px;
-      padding: 5px 8px;
-    }
-    .settings-box input {
-      width: 62px;
-      border: 1px solid rgba(155,114,207,0.35);
-      border-radius: 999px;
-      padding: 4px 8px;
-      font-size: 0.76rem;
-      text-align: center;
-      color: var(--lavender-deep);
-    }
-    .settings-box button {
-      border: 1px solid rgba(92, 61, 143, 0.5);
-      background: var(--lavender-deep);
-      color: #fff;
-      border-radius: 999px;
-      padding: 4px 10px;
-      font-size: 0.72rem;
-      cursor: pointer;
-    }
-
-    /* ── 로딩 플레이스홀더 ── */
-    .skeleton {
-      background: linear-gradient(90deg,
-        rgba(201,167,235,0.25) 25%,
-        rgba(201,167,235,0.55) 50%,
-        rgba(201,167,235,0.25) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-      border-radius: 8px;
-      height: 1em;
-      margin: 4px 0;
-    }
-    @keyframes shimmer {
-      0%   { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-
-    /* ── 모터 상태 태그 ── */
-    .motor-row {
+      width: 200px;
+      height: 200px;
+      margin-left: auto;
+      margin-right: auto;
+      border: 4px dashed var(--lavender-light);
       display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-    }
-    .motor-tag {
-      padding: 6px 16px;
-      border-radius: 999px;
-      font-size: 0.82rem;
-      font-weight: 600;
-      border: 2px solid transparent;
-    }
-    .motor-tag.on  { background: #e8f5e9; border-color: #66bb6a; color: #2e7d32; }
-    .motor-tag.off { background: var(--lavender-pale); border-color: var(--lavender-light); color: var(--lavender-deep); }
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.5s;
+  }
 
-    footer {
-      text-align: center;
-      font-size: 0.75rem;
+  #char-emoji {
+      font-size: 80px;
+      filter: drop-shadow(0 5px 10px rgba(0,0,0,0.1));
+      cursor: pointer;
+      user-select: none;
+  }
+
+  .exp-bar-container {
+      width: 100%;
+      height: 10px;
+      background: #eee;
+      border-radius: 5px;
+      margin-top: 10px;
+      overflow: hidden;
+  }
+
+  #exp-fill {
+      width: 0%;
+      height: 100%;
+      background: var(--lavender-mid);
+      transition: width 0.3s;
+  }
+
+  /* ── 미니게임: 벌 ── */
+  .bee {
+      position: fixed;
+      font-size: 24px;
+      cursor: crosshair;
+      z-index: 100;
+      transition: transform 0.1s;
+      user-select: none;
+  }
+
+  .floating-text {
+      position: absolute;
       color: var(--lavender-deep);
-      opacity: 0.5;
-      margin-top: 40px;
-    }
-  </style>
-</head>
-<body>
+      font-weight: bold;
+      animation: fadeUp 1s forwards;
+      pointer-events: none;
+  }
 
-<!-- 라벤더 꽃 배경 (JS로 생성) -->
-<div class="flowers-bg" id="flowersBg"></div>
+  @keyframes fadeUp {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(-50px); }
+  }
+</style>
 
-<div class="container">
-  <header>
-    <h1>🌿 라벤더 정원 모니터</h1>
-    <p class="subtitle">ESP32 실시간 환경 센서 &amp; AI 생육 분석</p>
-  </header>
-
-  <!-- 상태 바 -->
-  <div class="status-bar">
-    <div class="badge">
-      <span class="dot loading" id="dotEl"></span>
-      <span id="statusText">연결 중...</span>
-    </div>
-    <span class="last-update" id="lastUpdateEl">마지막 업데이트: —</span>
-    <div class="settings-box">
-      <span>센서 Gemini 주기(분)</span>
-      <input id="intervalInput" type="number" min="1" max="120" value="3" />
-      <button id="intervalBtn" type="button">적용</button>
-    </div>
+<!-- 센서 카드 윗부분에 배치 -->
+<div class="game-container" id="gameBox">
+  <div id="char-emoji">🌿</div>
+  <div style="font-size: 0.8rem; font-weight: bold; color: var(--lavender-deep);">
+      LV.<span id="lvl-num">1</span> 라벤더
   </div>
-
-  <!-- 센서 카드 -->
-  <div class="card">
-    <div class="card-title">ESP32 센서 데이터 (5분 주기)</div>
-    <div class="sensor-grid">
-      <div class="sensor-item">
-        <div class="sensor-label">온도</div>
-        <div class="sensor-value" id="tempEl">—<span class="sensor-unit">°C</span></div>
-      </div>
-      <div class="sensor-item">
-        <div class="sensor-label">습도</div>
-        <div class="sensor-value" id="humEl">—<span class="sensor-unit">%</span></div>
-      </div>
-    </div>
+  <div class="exp-bar-container">
+      <div id="exp-fill"></div>
   </div>
-
-  <!-- 모터 상태 카드 -->
-  <div class="card">
-    <div class="card-title">모터 제어 상태</div>
-    <div class="motor-row" id="motorRow">
-      <span class="motor-tag off" id="fanTag">🌀 선풍기: —</span>
-      <span class="motor-tag off" id="pumpTag">💧 물펌프: —</span>
-    </div>
-  </div>
-
-  <!-- AI 분석 카드 -->
-  <div class="card">
-    <div class="card-title">Gemini AI 생육 분석</div>
-    <div class="ai-body" id="aiBody">
-      <div class="skeleton" style="width:80%"></div>
-      <div class="skeleton" style="width:65%"></div>
-      <div class="skeleton" style="width:72%"></div>
-    </div>
-  </div>
-
-  <!-- 식물 사진 분석 카드 -->
-  <div class="card">
-    <div class="card-title">ESP32-CAM 이미지 / 수동 분석</div>
-    <div class="ai-body" id="plantBody">이미지는 자동 갱신됩니다. 분석은 버튼을 눌러 실행하세요.</div>
-    <div class="plant-image-wrap" id="plantImageWrap" style="display:none;">
-      <img id="plantImageEl" class="plant-image" alt="최신 식물 사진" />
-      <div class="plant-image-caption" id="plantImageCaption">최근 업로드 이미지</div>
-    </div>
-    <div class="ask-row">
-      <input id="questionEl" type="text" placeholder="예: 잎이 건강한 상태인지 알려줘" />
-      <button id="askBtn" type="button">Gemini 질문</button>
-    </div>
-  </div>
-
-  <footer>라벤더 정원 IoT 모니터 &bull; ESP32 + Flask + Gemini AI</footer>
+  <p id="garden-msg" style="font-size: 0.7rem; margin-top: 5px; color: #666;">평화로운 정원입니다.</p>
 </div>
 
+<!-- 스크립트 섹션에 추가 -->
 <script>
-  // ── 라벤더 꽃 배경 생성 ──
-  (function buildFlowers() {
-    const bg = document.getElementById('flowersBg');
-    const count = Math.max(18, Math.floor(window.innerWidth / 55));
-    for (let i = 0; i < count; i++) {
-      const stem = document.createElement('div');
-      stem.className = 'stem';
-      const h = 80 + Math.random() * 100;
-      const delay = (Math.random() * 4).toFixed(2);
-      const dur   = (3.5 + Math.random() * 2).toFixed(2);
-      stem.style.cssText = `
-        left: ${(i / count * 100) + (Math.random() * 4 - 2)}%;
-        height: ${h}px;
-        animation-delay: ${delay}s;
-        animation-duration: ${dur}s;
-        opacity: ${0.45 + Math.random() * 0.45};
-      `;
-      bg.appendChild(stem);
-    }
-  })();
+  let exp = 0;
+  let lv = 1;
 
-  // ── 유틸 ──
-  const $ = id => document.getElementById(id);
-  const dotEl       = $('dotEl');
-  const statusText  = $('statusText');
-  const lastUpdate  = $('lastUpdateEl');
-  const tempEl      = $('tempEl');
-  const humEl       = $('humEl');
-  const aiBody      = $('aiBody');
-  const plantBody   = $('plantBody');
-  const plantImageWrap = $('plantImageWrap');
-  const plantImageEl = $('plantImageEl');
-  const plantImageCaption = $('plantImageCaption');
-  const fanTag      = $('fanTag');
-  const pumpTag     = $('pumpTag');
-  const questionEl  = $('questionEl');
-  const askBtn      = $('askBtn');
-  const intervalInput = $('intervalInput');
-  const intervalBtn = $('intervalBtn');
-
-  function setStatus(state) {
-    dotEl.className = 'dot ' + state;
-    statusText.textContent = state === 'loading' ? '데이터 불러오는 중...'
-                           : state === 'stale'   ? '데이터 없음 (대기 중)'
-                                                 : '연결됨';
-  }
-
-  function formatTime(isoStr) {
-    if (!isoStr) return '—';
-    try {
-      return new Date(isoStr).toLocaleString('ko-KR', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit'
-      });
-    } catch { return isoStr; }
-  }
-
-  function updateMotorTags(text) {
-    // JSON 블록에서 fan/pump 값 추출 시도
-    const fanMatch  = text.match(/"?fan(?:_motor)?"?\s*:\s*"?(on|off|true|false|1|0)"?/i);
-    const pumpMatch = text.match(/"?(?:water_?)?pump(?:_motor)?"?\s*:\s*"?(on|off|true|false|1|0)"?/i);
-
-    const isOn = v => v && /on|true|1/i.test(v);
-
-    const fanOn  = fanMatch  ? isOn(fanMatch[1])  : null;
-    const pumpOn = pumpMatch ? isOn(pumpMatch[1]) : null;
-
-    if (fanOn !== null) {
-      fanTag.textContent = '🌀 선풍기: ' + (fanOn ? 'ON' : 'OFF');
-      fanTag.className   = 'motor-tag ' + (fanOn ? 'on' : 'off');
-    }
-    if (pumpOn !== null) {
-      pumpTag.textContent = '💧 물펌프: ' + (pumpOn ? 'ON' : 'OFF');
-      pumpTag.className   = 'motor-tag ' + (pumpOn ? 'on' : 'off');
-    }
-  }
-
-  function parseJsonBlock(text) {
-    if (!text || typeof text !== 'string') return null;
-    const start = text.indexOf('{');
-    const end   = text.lastIndexOf('}');
-    if (start < 0 || end <= start) return null;
-    try {
-      return JSON.parse(text.slice(start, end + 1));
-    } catch {
-      return null;
-    }
-  }
-
-  async function loadSettings() {
-    try {
-      const res = await fetch('/api/settings', { cache: 'no-store' });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.sensor_analysis_interval_min != null) {
-        intervalInput.value = Number(data.sensor_analysis_interval_min);
+  // 1. 캐릭터 상태 업데이트 (온습도 연동)
+  function updateCharacter(temp, hum) {
+      const emojiEl = $('char-emoji');
+      const msgEl = $('garden-msg');
+      
+      if (temp > 28) {
+          emojiEl.textContent = '🥵';
+          msgEl.textContent = '너무 더워요! 선풍기를 틀어주세요.';
+      } else if (hum < 40) {
+          emojiEl.textContent = '🥀';
+          msgEl.textContent = '목이 말라요... 물이 필요해요.';
+      } else if (temp < 15) {
+          emojiEl.textContent = '🥶';
+          msgEl.textContent = '추워요! 따뜻하게 해주세요.';
+      } else {
+          emojiEl.textContent = '🌸';
+          msgEl.textContent = '기분이 최고예요! 무럭무럭 자라는 중.';
       }
-    } catch (_) {
-    }
+      
+      // 데이터 갱신될 때마다 경험치 상승
+      gainExp(10);
   }
 
-  async function applySettings() {
-    try {
-      intervalBtn.disabled = true;
-      const minutes = Number(intervalInput.value || 3);
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sensor_analysis_interval_min: minutes })
-      });
-      if (!res.ok) return;
-      await fetchLatest();
-    } catch (_) {
-    } finally {
-      intervalBtn.disabled = false;
-    }
-  }
-
-  async function fetchLatestImage() {
-    try {
-      const res = await fetch('/api/latest-image', { cache: 'no-store' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-
-      if (!data || !data.image_b64 || !data.mime_type) {
-        plantImageWrap.style.display = 'none';
-        return;
+  // 2. 경험치 및 레벨업 시스템
+  function gainExp(amount) {
+      exp += amount;
+      if (exp >= 100) {
+          exp = 0;
+          lv++;
+          $('lvl-num').textContent = lv;
+          showFloatingText($('gameBox'), "LEVEL UP! ✨");
       }
-
-      plantImageEl.src = `data:${data.mime_type};base64,${data.image_b64}`;
-      const ts = data.timestamp ? formatTime(data.timestamp) : '시간 정보 없음';
-      plantImageCaption.textContent = `최근 업로드 이미지 (${ts})`;
-      plantImageWrap.style.display = 'block';
-
-      if (data.plant_result) {
-        plantBody.textContent = data.plant_result;
-      }
-    } catch (err) {
-      console.error('[image fetch error]', err);
-      plantImageWrap.style.display = 'none';
-    }
+      $('exp-fill').style.width = exp + '%';
   }
 
-  async function analyzeImageNow() {
-    try {
-      askBtn.disabled = true;
-      plantBody.textContent = 'Gemini 분석 요청 중...';
-      const res = await fetch('/api/analyze-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: (questionEl.value || '').trim() })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || ('HTTP ' + res.status));
-      }
-      plantBody.textContent = data.result || '(분석 결과 없음)';
-      await fetchLatestImage();
-    } catch (err) {
-      plantBody.textContent = `분석 실패: ${err.message}`;
-    } finally {
-      askBtn.disabled = false;
-    }
+  function showFloatingText(parent, text) {
+      const span = document.createElement('span');
+      span.className = 'floating-text';
+      span.textContent = text;
+      parent.appendChild(span);
+      setTimeout(() => span.remove(), 1000);
   }
 
-  // ── 데이터 fetch ──
+  // 3. 미니 게임: 벌 잡기
+  function spawnBee() {
+      const bee = document.createElement('div');
+      bee.className = 'bee';
+      bee.textContent = '🐝';
+      bee.style.left = Math.random() * 90 + 'vw';
+      bee.style.top = Math.random() * 90 + 'vh';
+      
+      bee.onclick = () => {
+          gainExp(5);
+          showFloatingText(bee, "+5 EXP");
+          bee.textContent = '✨';
+          setTimeout(() => bee.remove(), 200);
+      };
+      
+      document.body.appendChild(bee);
+      
+      // 5초 뒤에 사라짐
+      setTimeout(() => { if(bee) bee.remove(); }, 5000);
+  }
+
+  // 10초마다 벌 등장 확률
+  setInterval(() => {
+      if (Math.random() > 0.7) spawnBee();
+  }, 10000);
+
+  // 기존 fetchLatest 함수 내부에 아래 코드 추가
+  /*
   async function fetchLatest() {
-    setStatus('loading');
-    try {
-      const res  = await fetch('/api/latest', { cache: 'no-store' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-
-      if (!data.timestamp) {
-        setStatus('stale');
-        tempEl.innerHTML = '—<span class="sensor-unit">°C</span>';
-        humEl.innerHTML  = '—<span class="sensor-unit">%</span>';
-        aiBody.textContent = 'ESP32에서 아직 데이터가 수신되지 않았습니다.';
-        lastUpdate.textContent = '마지막 업데이트: —';
-        await fetchLatestImage();
-        return;
-      }
-
-      // 센서 값
-      tempEl.innerHTML = `${parseFloat(data.temperature).toFixed(1)}<span class="sensor-unit">°C</span>`;
-      humEl.innerHTML  = `${parseFloat(data.humidity).toFixed(1)}<span class="sensor-unit">%</span>`;
-
-      // AI 응답
-      const resultText = data.result || '(응답 없음)';
-      aiBody.textContent = resultText;
-      updateMotorTags(resultText);
-
-      if (data.plant_result) {
-        plantBody.textContent = data.plant_result;
-      }
-
-      // 시간
-      const due = Number(data.analysis_due_in_sec || 0);
-      const iv = Number(data.sensor_analysis_interval_min || intervalInput.value || 3);
-      intervalInput.value = iv;
-      lastUpdate.textContent = '마지막 업데이트: ' + formatTime(data.timestamp) + ` | 다음 분석 ${due}초`;
-      setStatus('');
-      await fetchLatestImage();
-    } catch (err) {
-      setStatus('stale');
-      console.error('[fetch error]', err);
-      plantImageWrap.style.display = 'none';
-    }
+      // ... 기존 코드 ...
+      const currentTemp = parseFloat(data.temperature);
+      const currentHum = parseFloat(data.humidity);
+      updateCharacter(currentTemp, currentHum); // 캐릭터 상태 업데이트 호출
+      // ... 기존 코드 ...
   }
-
-  // 최초 로드 + 30초마다 갱신
-  askBtn.addEventListener('click', analyzeImageNow);
-  intervalBtn.addEventListener('click', applySettings);
-  loadSettings();
-  fetchLatest();
-  setInterval(fetchLatest, 30_000);
+  */
 </script>
-</body>
-</html>
