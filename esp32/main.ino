@@ -39,7 +39,9 @@ const int RELAY_OFF = HIGH;
 
 // ===== 타이머 =====
 const unsigned long SEND_INTERVAL_MS = 3UL * 60UL * 1000UL;  // 3분
+const unsigned long SENSOR_READ_INTERVAL_MS = 1000;           // 1초
 unsigned long lastSendMs = 0;
+unsigned long lastSensorReadMs = 0;
 
 // ===== HTTP 통신 설정 =====
 const int HTTP_CONNECT_TIMEOUT_MS = 12000;
@@ -324,20 +326,31 @@ void drawDisplay() {
 //  서버 전송 & AI 응답 처리
 // ============================================================
 
-void sendSensorData() {
-  // 1. 센서 읽기
+bool updateSensorReadings() {
   float temp = dht.readTemperature();
   float hum  = dht.readHumidity();
 
   if (isnan(temp) || isnan(hum)) {
+    Serial.println("[DHT] 읽기 실패");
+    return false;
+  }
+
+  g_temp = temp;
+  g_hum  = hum;
+  Serial.printf("[DHT] 온도=%.1f  습도=%.1f\n", temp, hum);
+  return true;
+}
+
+void sendSensorData() {
+  // 1. 최신 센서값 확보 (실패 시 1회 재시도)
+  if ((isnan(g_temp) || isnan(g_hum)) && !updateSensorReadings()) {
     Serial.println("[DHT] 읽기 실패 — 건너뜀");
     g_statusMsg = "센서 오류";
     drawDisplay();
     return;
   }
-  g_temp = temp;
-  g_hum  = hum;
-  Serial.printf("[DHT] 온도=%.1f  습도=%.1f\n", temp, hum);
+  float temp = g_temp;
+  float hum  = g_hum;
 
   // 2. WiFi 확인
   if (!ensureWiFi()) {
@@ -472,6 +485,13 @@ void setup() {
   g_statusMsg = "준비 완료";
   drawDisplay();
 
+  // 부팅 직후 센서 1회 읽기
+  if (!updateSensorReadings()) {
+    g_statusMsg = "센서 초기화 실패";
+    drawDisplay();
+  }
+  lastSensorReadMs = millis();
+
   // 부팅 후 즉시 1회 전송
   sendSensorData();
   lastSendMs = millis();
@@ -486,8 +506,18 @@ void loop() {
     ensureWiFi();
   }
 
-  // 3분 주기 전송
+  // 센서 주기 읽기 (전송과 분리)
   unsigned long now = millis();
+  if (!g_sending && now - lastSensorReadMs >= SENSOR_READ_INTERVAL_MS) {
+    if (updateSensorReadings()) {
+      // 정상적으로 갱신되면 상태 메시지는 카운트다운 로직에서 갱신됨
+    } else if (g_currentPage == 0) {
+      g_statusMsg = "센서 읽기 실패";
+    }
+    lastSensorReadMs = now;
+  }
+
+  // 3분 주기 전송
   if (now - lastSendMs >= SEND_INTERVAL_MS) {
     lastSendMs = now;
     sendSensorData();
