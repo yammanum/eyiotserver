@@ -203,6 +203,34 @@
       border-top: 1px solid rgba(155, 114, 207, 0.2);
     }
 
+    .ask-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .ask-row input {
+      border: 1px solid rgba(155, 114, 207, 0.35);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.88rem;
+      width: 100%;
+    }
+    .ask-row button {
+      border: 1px solid rgba(92, 61, 143, 0.5);
+      background: var(--lavender-deep);
+      color: #fff;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
+    .ask-row button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     /* ── 상태 배지 ── */
     .status-bar {
       display: flex;
@@ -343,11 +371,15 @@
 
   <!-- 식물 사진 분석 카드 -->
   <div class="card">
-    <div class="card-title">ESP32-CAM 식물 상태</div>
-    <div class="ai-body" id="plantBody">아직 사진 분석 데이터가 없습니다.</div>
+    <div class="card-title">ESP32-CAM 이미지 / 수동 분석</div>
+    <div class="ai-body" id="plantBody">이미지는 자동 갱신됩니다. 분석은 버튼을 눌러 실행하세요.</div>
     <div class="plant-image-wrap" id="plantImageWrap" style="display:none;">
       <img id="plantImageEl" class="plant-image" alt="최신 식물 사진" />
       <div class="plant-image-caption" id="plantImageCaption">최근 업로드 이미지</div>
+    </div>
+    <div class="ask-row">
+      <input id="questionEl" type="text" placeholder="예: 잎이 건강한 상태인지 알려줘" />
+      <button id="askBtn" type="button">Gemini 질문</button>
     </div>
   </div>
 
@@ -390,6 +422,8 @@
   const plantImageCaption = $('plantImageCaption');
   const fanTag      = $('fanTag');
   const pumpTag     = $('pumpTag');
+  const questionEl  = $('questionEl');
+  const askBtn      = $('askBtn');
 
   function setStatus(state) {
     dotEl.className = 'dot ' + state;
@@ -455,9 +489,35 @@
       const ts = data.timestamp ? formatTime(data.timestamp) : '시간 정보 없음';
       plantImageCaption.textContent = `최근 업로드 이미지 (${ts})`;
       plantImageWrap.style.display = 'block';
+
+      if (data.plant_result) {
+        plantBody.textContent = data.plant_result;
+      }
     } catch (err) {
       console.error('[image fetch error]', err);
       plantImageWrap.style.display = 'none';
+    }
+  }
+
+  async function analyzeImageNow() {
+    try {
+      askBtn.disabled = true;
+      plantBody.textContent = 'Gemini 분석 요청 중...';
+      const res = await fetch('/api/analyze-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: (questionEl.value || '').trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || ('HTTP ' + res.status));
+      }
+      plantBody.textContent = data.result || '(분석 결과 없음)';
+      await fetchLatestImage();
+    } catch (err) {
+      plantBody.textContent = `분석 실패: ${err.message}`;
+    } finally {
+      askBtn.disabled = false;
     }
   }
 
@@ -474,9 +534,8 @@
         tempEl.innerHTML = '—<span class="sensor-unit">°C</span>';
         humEl.innerHTML  = '—<span class="sensor-unit">%</span>';
         aiBody.textContent = 'ESP32에서 아직 데이터가 수신되지 않았습니다.';
-        plantBody.textContent = '아직 사진 분석 데이터가 없습니다.';
         lastUpdate.textContent = '마지막 업데이트: —';
-        plantImageWrap.style.display = 'none';
+        await fetchLatestImage();
         return;
       }
 
@@ -489,17 +548,8 @@
       aiBody.textContent = resultText;
       updateMotorTags(resultText);
 
-      // 식물 이미지 분석 결과
-      const plantRaw = data.plant_result || '(식물 분석 대기 중)';
-      const plantObj = parseJsonBlock(plantRaw);
-      if (plantObj) {
-        const status = (plantObj.plant_status || 'unknown').toUpperCase();
-        const conf = Number.isFinite(Number(plantObj.confidence)) ? `${plantObj.confidence}%` : '-';
-        const reason = plantObj.reason || '-';
-        const action = plantObj.action || '-';
-        plantBody.textContent = `상태: ${status}\n신뢰도: ${conf}\n원인: ${reason}\n권장조치: ${action}`;
-      } else {
-        plantBody.textContent = plantRaw;
+      if (data.plant_result) {
+        plantBody.textContent = data.plant_result;
       }
 
       // 시간
@@ -514,6 +564,7 @@
   }
 
   // 최초 로드 + 30초마다 갱신
+  askBtn.addEventListener('click', analyzeImageNow);
   fetchLatest();
   setInterval(fetchLatest, 30_000);
 </script>

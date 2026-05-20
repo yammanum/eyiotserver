@@ -65,6 +65,19 @@ def _call_gemini_with_image(prompt: str, image_bytes: bytes, mime_type: str) -> 
     return response.text
 
 
+def _build_image_prompt(question: str, temp, hum) -> str:
+    q = (question or "현재 식물 상태를 진단하고 관리 방법을 알려줘").strip()
+    sensor_hint = ""
+    if temp is not None and hum is not None:
+        sensor_hint = f" 참고 센서값: temperature={temp}, humidity={hum}."
+    return (
+        "당신은 식물 생육 상태를 판단하는 전문가입니다. "
+        "업로드된 식물 사진을 보고 질문에 답하세요. "
+        f"질문: {q}."
+        f"{sensor_hint}"
+    )
+
+
 @app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
@@ -173,72 +186,54 @@ def plant_image():
         if not mime_type.startswith("image/"):
             return jsonify({"error": "uploaded file must be an image"}), 400
 
-        temp = request.form.get("temperature")
-        hum = request.form.get("humidity")
-        extra = ""
-        if temp is not None and hum is not None:
-            extra = f" 참고 센서값: temperature={temp}, humidity={hum}."
-
-        prompt = (
-            "당신은 식물 생육 상태를 판단하는 전문가입니다. "
-            "업로드된 식물 사진을 보고 반드시 한 줄 JSON만 출력하세요. "
-            "추가 설명/코드블록/개행 금지. "
-            "출력 스키마: "
-            "{\"plant_status\":\"healthy|warning|critical\",\"confidence\":0~100 정수,"
-            "\"reason\":\"한국어 40자 이내\",\"action\":\"한국어 30자 이내\"}."
-            f"{extra}"
-        )
-
-        result = ""
-        ai_error = None
-        if API_KEY:
-            try:
-                result = _call_gemini_with_image(prompt, image_bytes, mime_type)
-            except Exception as e:
-                ai_error = f"Gemini image request failed: {e}"
-        else:
-            ai_error = "GEMINI_API_KEY is not set"
-
-        if not result:
-            result = json.dumps(
-                {
-                    "plant_status": "warning",
-                    "confidence": 40,
-                    "reason": "AI 분석 실패",
-                    "action": "조명/수분 상태를 점검하세요",
-                    "detail": (ai_error or "unknown")[:80],
-                },
-                ensure_ascii=False,
-            )
-
         now_iso = datetime.now(timezone.utc).isoformat()
-        _latest.update(
-            {
-                "plant_result": result,
-                "plant_timestamp": now_iso,
-            }
-        )
+        _latest.update({"plant_timestamp": now_iso})
 
         _latest_image.update(
             {
                 "timestamp": now_iso,
                 "mime_type": mime_type,
                 "image_b64": base64.b64encode(image_bytes).decode("ascii"),
-                "plant_result": result,
             }
         )
 
-        response = {
-            "result": result,
-            "timestamp": now_iso,
-        }
-        if ai_error:
-            response["fallback"] = True
-            response["detail"] = ai_error
-        return jsonify(response)
+        return jsonify({"ok": True, "timestamp": now_iso, "message": "image_saved"})
 
     except Exception as e:
         print("[plant-image] 에러:", e)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/analyze-image", methods=["POST"])
+def analyze_image():
+    try:
+        if "image_b64" not in _latest_image or "mime_type" not in _latest_image:
+            return jsonify({"error": "latest image not found"}), 400
+
+        body = request.get_json(silent=True) or {}
+        question = body.get("question", "")
+
+        if not API_KEY:
+            return jsonify({"error": "GEMINI_API_KEY is not set"}), 500
+
+        image_bytes = base64.b64decode(_latest_image["image_b64"])
+        prompt = _build_image_prompt(question, _latest.get("temperature"), _latest.get("humidity"))
+        result = _call_gemini_with_image(prompt, image_bytes, _latest_image["mime_type"])
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        _latest.update(
+            {
+                "plant_result": result,
+                "plant_timestamp": now_iso,
+                "plant_question": question,
+            }
+        )
+        _latest_image.update({"plant_result": result, "plant_timestamp": now_iso})
+
+        return jsonify({"ok": True, "result": result, "timestamp": now_iso})
+
+    except Exception as e:
+        print("[analyze-image] 에러:", e)
         return jsonify({"error": str(e)}), 500
 
 
