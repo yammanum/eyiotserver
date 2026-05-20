@@ -272,6 +272,36 @@
       opacity: 0.65;
     }
 
+    .settings-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.76rem;
+      color: var(--lavender-deep);
+      background: rgba(255,255,255,0.65);
+      border: 1px solid rgba(155,114,207,0.3);
+      border-radius: 999px;
+      padding: 5px 8px;
+    }
+    .settings-box input {
+      width: 62px;
+      border: 1px solid rgba(155,114,207,0.35);
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 0.76rem;
+      text-align: center;
+      color: var(--lavender-deep);
+    }
+    .settings-box button {
+      border: 1px solid rgba(92, 61, 143, 0.5);
+      background: var(--lavender-deep);
+      color: #fff;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.72rem;
+      cursor: pointer;
+    }
+
     /* ── 로딩 플레이스홀더 ── */
     .skeleton {
       background: linear-gradient(90deg,
@@ -333,6 +363,11 @@
       <span id="statusText">연결 중...</span>
     </div>
     <span class="last-update" id="lastUpdateEl">마지막 업데이트: —</span>
+    <div class="settings-box">
+      <span>센서 Gemini 주기(분)</span>
+      <input id="intervalInput" type="number" min="1" max="120" value="3" />
+      <button id="intervalBtn" type="button">적용</button>
+    </div>
   </div>
 
   <!-- 센서 카드 -->
@@ -424,6 +459,8 @@
   const pumpTag     = $('pumpTag');
   const questionEl  = $('questionEl');
   const askBtn      = $('askBtn');
+  const intervalInput = $('intervalInput');
+  const intervalBtn = $('intervalBtn');
 
   function setStatus(state) {
     dotEl.className = 'dot ' + state;
@@ -471,6 +508,35 @@
       return JSON.parse(text.slice(start, end + 1));
     } catch {
       return null;
+    }
+  }
+
+  async function loadSettings() {
+    try {
+      const res = await fetch('/api/settings', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.sensor_analysis_interval_min != null) {
+        intervalInput.value = Number(data.sensor_analysis_interval_min);
+      }
+    } catch (_) {
+    }
+  }
+
+  async function applySettings() {
+    try {
+      intervalBtn.disabled = true;
+      const minutes = Number(intervalInput.value || 3);
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sensor_analysis_interval_min: minutes })
+      });
+      if (!res.ok) return;
+      await fetchLatest();
+    } catch (_) {
+    } finally {
+      intervalBtn.disabled = false;
     }
   }
 
@@ -553,7 +619,10 @@
       }
 
       // 시간
-      lastUpdate.textContent = '마지막 업데이트: ' + formatTime(data.timestamp);
+      const due = Number(data.analysis_due_in_sec || 0);
+      const iv = Number(data.sensor_analysis_interval_min || intervalInput.value || 3);
+      intervalInput.value = iv;
+      lastUpdate.textContent = '마지막 업데이트: ' + formatTime(data.timestamp) + ` | 다음 분석 ${due}초`;
       setStatus('');
       await fetchLatestImage();
     } catch (err) {
@@ -565,6 +634,8 @@
 
   // 최초 로드 + 30초마다 갱신
   askBtn.addEventListener('click', analyzeImageNow);
+  intervalBtn.addEventListener('click', applySettings);
+  loadSettings();
   fetchLatest();
   setInterval(fetchLatest, 30_000);
 </script>

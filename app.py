@@ -13,10 +13,14 @@ app = Flask(__name__)
 # Gemini API 설정 (Vercel 환경변수 사용)
 API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_SENSOR_ANALYSIS_INTERVAL_MIN = 3
 
 # 최신 센서 데이터를 메모리에 보관
 _latest: dict = {}
 _latest_image: dict = {}
+_settings: dict = {
+    "sensor_analysis_interval_min": DEFAULT_SENSOR_ANALYSIS_INTERVAL_MIN,
+}
 
 
 def _has_api_key() -> bool:
@@ -34,6 +38,29 @@ def _friendly_gemini_error(err) -> str:
     if "timeout" in msg:
         return "Gemini 응답 시간이 초과되었습니다"
     return "Gemini 호출 실패"
+
+
+def _to_int(value, default_value: int) -> int:
+    try:
+        return int(value)
+    except Exception:
+        return default_value
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _due_seconds(last_iso: str | None, interval_sec: int) -> int:
+    if not last_iso:
+        return 0
+    try:
+        last_dt = datetime.fromisoformat(last_iso)
+    except Exception:
+        return 0
+    elapsed = (datetime.now(timezone.utc) - last_dt).total_seconds()
+    left = interval_sec - int(elapsed)
+    return max(0, left)
 
 
 def _decide_motors(temp: float, hum: float) -> tuple[bool, bool]:
@@ -102,12 +129,41 @@ def index():
 
 @app.route("/api/latest", methods=["GET"])
 def api_latest():
-    return jsonify(_latest)
+    payload = dict(_latest)
+    interval_min = _to_int(_settings.get("sensor_analysis_interval_min"), DEFAULT_SENSOR_ANALYSIS_INTERVAL_MIN)
+    payload.update(
+        {
+            "sensor_analysis_interval_min": interval_min,
+            "analysis_due_in_sec": _due_seconds(_latest.get("analysis_timestamp"), interval_min * 60),
+        }
+    )
+    return jsonify(payload)
 
 
 @app.route("/api/latest-image", methods=["GET"])
 def api_latest_image():
     return jsonify(_latest_image)
+
+
+@app.route("/api/settings", methods=["GET", "POST"])
+def api_settings():
+    if request.method == "GET":
+        return jsonify(
+            {
+                "sensor_analysis_interval_min": _to_int(
+                    _settings.get("sensor_analysis_interval_min"),
+                    DEFAULT_SENSOR_ANALYSIS_INTERVAL_MIN,
+                ),
+                "min": 1,
+                "max": 120,
+            }
+        )
+
+    body = request.get_json(silent=True) or {}
+    interval_min = _to_int(body.get("sensor_analysis_interval_min"), DEFAULT_SENSOR_ANALYSIS_INTERVAL_MIN)
+    interval_min = max(1, min(120, interval_min))
+    _settings["sensor_analysis_interval_min"] = interval_min
+    return jsonify({"ok": True, "sensor_analysis_interval_min": interval_min})
 
 
 @app.route("/favicon.ico", methods=["GET"])
@@ -138,12 +194,39 @@ def sensor():
         if temp is None or hum is None:
             return jsonify({"error": "temperature and humidity are required"}), 400
 
-        print(f"[센서] 온도: {temp}, 습도: {hum}")
+        temp_f = float(temp)
+        hum_f = float(hum)
+        now_iso = _now_iso()
+
+        # 최신 센서값은 항상 갱신
+        _latest.update(
+            {
+                "temperature": temp_f,
+                "humidity": hum_f,
+                "timestamp": now_iso,
+            }
+        )
+
+        print(f"[센서] 온도: {temp_f}, 습도: {hum_f}")
+
+        interval_min = _to_int(_settings.get("sensor_analysis_interval_min"), DEFAULT_SENSOR_ANALYSIS_INTERVAL_MIN)
+        due_in_sec = _due_seconds(_latest.get("analysis_timestamp"), interval_min * 60)
+
+        if due_in_sec > 0 and _latest.get("result"):
+            return jsonify(
+                {
+                    "result": _latest.get("result"),
+                    "analysis_run": False,
+                    "analysis_reason": "not_due",
+                    "analysis_due_in_sec": due_in_sec,
+                    "sensor_analysis_interval_min": interval_min,
+                }
+            )
 
         prompt = (
             "아래 규칙을 반드시 지켜 한 줄 JSON만 출력하세요. "
             "추가 설명/코드블록/개행 금지. "
-            f"입력값: temperature={temp}, humidity={hum}. "
+            f"입력값: temperature={temp_f}, humidity={hum_f}. "
             "출력 스키마: {\"fan\":\"ON|OFF\",\"pump\":\"ON|OFF\",\"advice\":\"20자 이내\"}. "
             "advice는 한국어 20자 이내로 작성하세요."
         )
@@ -160,19 +243,25 @@ def sensor():
             ai_error = "Gemini API 키가 설정되지 않았습니다"
 
         if not result:
-            result = _build_fallback_result(float(temp), float(hum), ai_error or "unknown")
+            result = _build_fallback_result(temp_f, hum_f, ai_error or "unknown")
 
         print(f"[AI 응답] {result}")
 
         # 최신 데이터 저장 (대시보드 표시용)
-        _latest.update({
-            "temperature": temp,
-            "humidity": hum,
-            "result": result,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        _latest.update(
+            {
+                "result": result,
+                "analysis_timestamp": now_iso,
+            }
+        )
 
-        response = {"result": result}
+        response = {
+            "result": result,
+            "analysis_run": True,
+            "analysis_reason": "ok" if not ai_error else "fallback",
+            "analysis_due_in_sec": _due_seconds(_latest.get("analysis_timestamp"), interval_min * 60),
+            "sensor_analysis_interval_min": interval_min,
+        }
         if ai_error:
             response["fallback"] = True
             response["detail"] = ai_error
