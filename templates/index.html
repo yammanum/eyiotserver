@@ -1,168 +1,75 @@
-<!-- 스타일 섹션에 추가/수정 -->
 <style>
-  /* ... 기존 스타일 유지 ... */
+  /* ── 라벤더 테마 컬러 변수 정의 (기존에 없다면 추가) ── */
+  :root {
+      --lavender-light: #f3e8ff;
+      --lavender-mid: #c084fc;
+      --lavender-deep: #7e22ce;
+      --bg-gradient-1: #fbf7ff;
+      --bg-gradient-2: #efe5fd;
+      --bg-gradient-3: #e0d0f9;
+  }
 
-  /* ── 게임 요소: 라벤더 캐릭터 ── */
+  /* ── 웹페이지 전체 배경 디자인 ── */
+  body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      /* 부드럽고 몽환적인 라벤더 그라데이션 배경 */
+      background: linear-gradient(135deg, var(--bg-gradient-1), var(--bg-gradient-2), var(--bg-gradient-3));
+      background-size: 400% 400%;
+      /* 배경이 은은하게 움직이는 애니메이션 효과 */
+      animation: gradientShift 15s ease infinite;
+      font-family: 'Malgun Gothic', sans-serif;
+      overflow-x: hidden;
+  }
+
+  /* 배경 움직임 애니메이션 */
+  @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+  }
+
+  /* ── 캐릭터 박스 디자인 업그레이드 (기존 .game-container 수정) ── */
   .game-container {
       position: relative;
       text-align: center;
-      margin: 20px 0;
+      margin: 30px auto;
       padding: 20px;
-      background: rgba(255, 255, 255, 0.4);
+      /* 입체감 있는 투명 유리를 얹은 듯한 글래스모피즘 스타일 */
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       border-radius: 50%;
-      width: 200px;
-      height: 200px;
-      margin-left: auto;
-      margin-right: auto;
-      border: 4px dashed var(--lavender-light);
+      width: 220px;
+      height: 220px;
+      box-shadow: 0 10px 25px rgba(126, 34, 206, 0.1);
+      border: 3px dotted var(--lavender-mid);
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      transition: all 0.5s;
+      transition: all 0.5s ease;
+  }
+
+  /* 마우스를 올렸을 때 반응하는 효과 */
+  .game-container:hover {
+      transform: scale(1.03);
+      box-shadow: 0 15px 30px rgba(126, 34, 206, 0.15);
+      background: rgba(255, 255, 255, 0.75);
   }
 
   #char-emoji {
-      font-size: 80px;
-      filter: drop-shadow(0 5px 10px rgba(0,0,0,0.1));
+      font-size: 85px;
+      filter: drop-shadow(0 8px 12px rgba(126, 34, 206, 0.2));
       cursor: pointer;
       user-select: none;
+      transition: transform 0.2s;
+  }
+  
+  #char-emoji:active {
+      transform: scale(0.9); /* 누를 때 쏙 들어가는 효과 */
   }
 
-  .exp-bar-container {
-      width: 100%;
-      height: 10px;
-      background: #eee;
-      border-radius: 5px;
-      margin-top: 10px;
-      overflow: hidden;
-  }
-
-  #exp-fill {
-      width: 0%;
-      height: 100%;
-      background: var(--lavender-mid);
-      transition: width 0.3s;
-  }
-
-  /* ── 미니게임: 벌 ── */
-  .bee {
-      position: fixed;
-      font-size: 24px;
-      cursor: crosshair;
-      z-index: 100;
-      transition: transform 0.1s;
-      user-select: none;
-  }
-
-  .floating-text {
-      position: absolute;
-      color: var(--lavender-deep);
-      font-weight: bold;
-      animation: fadeUp 1s forwards;
-      pointer-events: none;
-  }
-
-  @keyframes fadeUp {
-      from { opacity: 1; transform: translateY(0); }
-      to { opacity: 0; transform: translateY(-50px); }
-  }
+  /* ... 기존의 exp-bar, bee, floating-text 스타일은 그대로 유지 ... */
 </style>
-
-<!-- 센서 카드 윗부분에 배치 -->
-<div class="game-container" id="gameBox">
-  <div id="char-emoji">🌿</div>
-  <div style="font-size: 0.8rem; font-weight: bold; color: var(--lavender-deep);">
-      LV.<span id="lvl-num">1</span> 라벤더
-  </div>
-  <div class="exp-bar-container">
-      <div id="exp-fill"></div>
-  </div>
-  <p id="garden-msg" style="font-size: 0.7rem; margin-top: 5px; color: #666;">평화로운 정원입니다.</p>
-</div>
-
-<!-- 스크립트 섹션에 추가 -->
-<script>
-  let exp = 0;
-  let lv = 1;
-
-  // 1. 캐릭터 상태 업데이트 (온습도 연동)
-  function updateCharacter(temp, hum) {
-      const emojiEl = $('char-emoji');
-      const msgEl = $('garden-msg');
-      
-      if (temp > 28) {
-          emojiEl.textContent = '🥵';
-          msgEl.textContent = '너무 더워요! 선풍기를 틀어주세요.';
-      } else if (hum < 40) {
-          emojiEl.textContent = '🥀';
-          msgEl.textContent = '목이 말라요... 물이 필요해요.';
-      } else if (temp < 15) {
-          emojiEl.textContent = '🥶';
-          msgEl.textContent = '추워요! 따뜻하게 해주세요.';
-      } else {
-          emojiEl.textContent = '🌸';
-          msgEl.textContent = '기분이 최고예요! 무럭무럭 자라는 중.';
-      }
-      
-      // 데이터 갱신될 때마다 경험치 상승
-      gainExp(10);
-  }
-
-  // 2. 경험치 및 레벨업 시스템
-  function gainExp(amount) {
-      exp += amount;
-      if (exp >= 100) {
-          exp = 0;
-          lv++;
-          $('lvl-num').textContent = lv;
-          showFloatingText($('gameBox'), "LEVEL UP! ✨");
-      }
-      $('exp-fill').style.width = exp + '%';
-  }
-
-  function showFloatingText(parent, text) {
-      const span = document.createElement('span');
-      span.className = 'floating-text';
-      span.textContent = text;
-      parent.appendChild(span);
-      setTimeout(() => span.remove(), 1000);
-  }
-
-  // 3. 미니 게임: 벌 잡기
-  function spawnBee() {
-      const bee = document.createElement('div');
-      bee.className = 'bee';
-      bee.textContent = '🐝';
-      bee.style.left = Math.random() * 90 + 'vw';
-      bee.style.top = Math.random() * 90 + 'vh';
-      
-      bee.onclick = () => {
-          gainExp(5);
-          showFloatingText(bee, "+5 EXP");
-          bee.textContent = '✨';
-          setTimeout(() => bee.remove(), 200);
-      };
-      
-      document.body.appendChild(bee);
-      
-      // 5초 뒤에 사라짐
-      setTimeout(() => { if(bee) bee.remove(); }, 5000);
-  }
-
-  // 10초마다 벌 등장 확률
-  setInterval(() => {
-      if (Math.random() > 0.7) spawnBee();
-  }, 10000);
-
-  // 기존 fetchLatest 함수 내부에 아래 코드 추가
-  /*
-  async function fetchLatest() {
-      // ... 기존 코드 ...
-      const currentTemp = parseFloat(data.temperature);
-      const currentHum = parseFloat(data.humidity);
-      updateCharacter(currentTemp, currentHum); // 캐릭터 상태 업데이트 호출
-      // ... 기존 코드 ...
-  }
-  */
-</script>
